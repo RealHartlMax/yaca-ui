@@ -1,7 +1,7 @@
 <template>
     <div v-if="values.isRadioOpen" class="radioDiv">
         <div class="content">
-            <v-img :src="values.radiobackground" :width="xlAndDown ? 150 : 200"></v-img>
+            <v-img :src="values.radiobackground" :width="xlAndDown ? 150 : 200" class="radioShell"></v-img>
             <div class="btnOverContent">
                 <v-row no-gutters>
                     <v-col cols="6" class="clickCols" :style="[xlAndDown ? 'height: 50px' : 'height: 65px']"
@@ -19,7 +19,7 @@
                         :key="item.key" @click="btnExecute(item.key)" class="clickCols"></v-col>
                 </v-row>
             </div>
-            <div class="activeRadio" v-if="values.isRadioActive" :style="['background-color: ' + values.color + '']">
+            <div class="activeRadio" v-if="values.isRadioActive" :style="{ '--lcd-color': values.color }">
                 <div class="volumeContent">
                     <v-row no-gutters v-for="item in values.volume" :key="item">
                         <v-col cols="12" class="radioVolume"></v-col>
@@ -249,6 +249,7 @@ let volumeChange = (mode: string) => {
     position: relative;
     left: 5rem;
     bottom: 10rem;
+    filter: drop-shadow(0 16px 24px rgba(8, 5, 4, 0.6));
 }
 
 @media(min-width: 2560px) {
@@ -256,6 +257,11 @@ let volumeChange = (mode: string) => {
         left: 5rem;
         bottom: 16rem;
     }
+}
+
+.radioShell {
+    border-radius: 12px;
+    filter: sepia(0.26) contrast(1.05) saturate(0.85);
 }
 
 .activeRadio {
@@ -267,8 +273,17 @@ let volumeChange = (mode: string) => {
     top: 190px;
     font-size: 0.75rem;
     line-height: 0;
-    text-shadow: 2px 2px 2px #116119;
-    color: #21311d;
+    text-shadow: 0 0 4px rgba(205, 238, 149, 0.2), 1px 1px 0 rgba(15, 18, 6, 0.86);
+    color: #292f13;
+    border: 1px solid rgba(158, 112, 61, 0.58);
+    background:
+        linear-gradient(175deg, rgba(66, 69, 27, 0.84) 0%, color-mix(in srgb, var(--lcd-color, #7c9d7d) 50%, #3a2d17 50%) 100%),
+        repeating-linear-gradient(0deg, rgba(209, 184, 111, 0.08) 0px, rgba(209, 184, 111, 0.08) 1px, rgba(28, 26, 11, 0) 1px, rgba(28, 26, 11, 0) 3px);
+    box-shadow:
+        inset 0 0 0 1px rgba(224, 174, 107, 0.24),
+        inset 0 0 14px rgba(31, 22, 8, 0.28),
+        0 3px 10px rgba(4, 3, 2, 0.46);
+    animation: radioPulse 2.8s ease-in-out infinite;
 }
 
 @media(min-width: 2560px) {
@@ -283,7 +298,8 @@ let volumeChange = (mode: string) => {
 }
 
 .deactiveRadio {
-    background-color: black;
+    background:
+        linear-gradient(175deg, rgba(13, 12, 9, 0.92) 0%, rgba(31, 25, 20, 0.96) 100%);
     width: 114px;
     height: 60px;
     position: absolute;
@@ -291,6 +307,8 @@ let volumeChange = (mode: string) => {
     top: 190px;
     font-size: 0.75rem;
     line-height: 0;
+    border: 1px solid rgba(164, 121, 72, 0.38);
+    box-shadow: inset 0 0 0 1px rgba(210, 175, 127, 0.09);
 }
 
 @media(min-width: 2560px) {
@@ -309,12 +327,16 @@ let volumeChange = (mode: string) => {
 }
 
 .inputFrequenz {
-    color: #21311d;
+    color: #2c2c15;
     text-align: center;
-    padding: 2px;
+    padding: 2px 4px;
     font-size: 0.75rem;
     width: 100px;
-    text-shadow: 2px 2px 2px #116119;
+    text-shadow: 0 0 4px rgba(208, 209, 112, 0.26);
+    border-radius: 4px;
+    border: 1px solid rgba(80, 68, 33, 0.62);
+    background: rgba(181, 170, 116, 0.58);
+    font-family: 'DSEG7 Modern';
 }
 
 @media(min-width: 2560px) {
@@ -370,6 +392,12 @@ let volumeChange = (mode: string) => {
 
 .clickCols {
     cursor: pointer;
+    border-radius: 3px;
+    transition: background-color 0.16s ease;
+}
+
+.clickCols:hover {
+    background-color: rgba(169, 122, 64, 0.2);
 }
 
 .radioVolume {
@@ -379,7 +407,8 @@ let volumeChange = (mode: string) => {
     width: 5px;
     height: 5px;
     margin: 2px;
-    background: #63d265;
+    background: linear-gradient(180deg, #d3d778 0%, #8f9048 100%);
+    border-radius: 1px;
 }
 
 @media (min-width: 2560px) {
@@ -403,6 +432,24 @@ let volumeChange = (mode: string) => {
 @media(min-width: 2560px) {
     .volumeContent {
         height: 80px;
+    }
+}
+
+.modeContent {
+    letter-spacing: 0.06em;
+}
+
+@keyframes radioPulse {
+    0% {
+        box-shadow: inset 0 0 0 1px rgba(218, 166, 102, 0.24), inset 0 0 14px rgba(31, 22, 8, 0.25), 0 3px 10px rgba(4, 3, 2, 0.42);
+    }
+
+    50% {
+        box-shadow: inset 0 0 0 1px rgba(226, 182, 119, 0.35), inset 0 0 16px rgba(43, 31, 11, 0.31), 0 4px 12px rgba(6, 4, 3, 0.52);
+    }
+
+    100% {
+        box-shadow: inset 0 0 0 1px rgba(218, 166, 102, 0.24), inset 0 0 14px rgba(31, 22, 8, 0.25), 0 3px 10px rgba(4, 3, 2, 0.42);
     }
 }
 </style>
