@@ -1,21 +1,21 @@
 <template>
-    <div v-if="values.isRadioOpen" class="radioDiv">
+    <div v-if="values.isRadioOpen" class="radioDiv" :style="radioViewportStyle">
         <div class="content">
-            <v-img :src="values.radiobackground" :width="xlAndDown ? 150 : 200" class="radioShell"></v-img>
+            <v-img :src="values.radiobackground" width="200" class="radioShell"></v-img>
             <div class="btnOverContent">
                 <v-row no-gutters>
-                    <v-col cols="6" class="clickCols" :style="[xlAndDown ? 'height: 50px' : 'height: 65px']"
+                    <v-col cols="6" class="clickCols" style="height: 65px"
                         @click="btnExecute('volumeUp')" @contextmenu.prevent="btnExecuteRightClick('volumeDown')">
                     </v-col>
                     <v-col cols="6"
-                        :style="[xlAndDown ? 'height: 50px' : 'height: 35px', 'align-self: end', 'display: flex', 'flex-wrap: wrap']"
+                        :style="['height: 35px', 'align-self: end', 'display: flex', 'flex-wrap: wrap']"
                         class="clickCols" @click="btnExecute('onOff')">
                     </v-col>
                 </v-row>
             </div>
             <div class="btnContent">
                 <v-row no-gutters v-for="(btn, index) in values.btn" :key="index">
-                    <v-col cols="4" :style="[xlAndDown ? 'height: 25px' : 'height: 30px']" v-for="item in btn"
+                    <v-col cols="4" style="height: 30px" v-for="item in btn"
                         :key="item.key" @click="btnExecute(item.key)" class="clickCols"></v-col>
                 </v-row>
             </div>
@@ -37,7 +37,7 @@
                     <v-col cols="12">
                         <div class="frequenzContent">
                             <input v-model="values.frequency" class="inputFrequenz" type="text"
-                                @input="event => frequenzRule(event.target.value)"
+                                @input="handleFrequencyInput"
                             />
                         </div>
                     </v-col>
@@ -49,10 +49,17 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive } from 'vue';
+import { computed, onMounted, onUnmounted, reactive } from 'vue';
 import { useDisplay } from 'vuetify';
 import { GameService } from '../../services/game-service';
-import radiobackground from '/src/assets/radio.png';
+import radiobackground from '/src/assets/radio.webp';
+
+const BASE_VIEWPORT_WIDTH = 1920;
+const BASE_VIEWPORT_HEIGHT = 1080;
+const BASE_RADIO_WIDTH = 200;
+const BASE_RADIO_HEIGHT = 360;
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 let values = reactive({
     isRadioOpen: false,
@@ -94,7 +101,36 @@ let values = reactive({
     ]
 });
 
-const { xlAndDown } = useDisplay();
+const { width, height } = useDisplay();
+
+const aspectRatio = computed(() => width.value / Math.max(height.value, 1));
+
+const radioScale = computed(() => {
+    const widthScale = width.value / BASE_VIEWPORT_WIDTH;
+    const heightScale = height.value / BASE_VIEWPORT_HEIGHT;
+    return clamp(Math.min(widthScale, heightScale), 0.64, 1.45);
+});
+
+const radioViewportStyle = computed(() => {
+    let leftRatio = 0.075;
+    let topRatio = 0.26;
+
+    if (aspectRatio.value >= 2) {
+        leftRatio = 0.05;
+        topRatio = 0.22;
+    } else if (aspectRatio.value <= 1.4) {
+        leftRatio = 0.04;
+        topRatio = 0.29;
+    }
+
+    return {
+        '--radio-scale': String(radioScale.value),
+        left: `${Math.round(clamp(width.value * leftRatio, 20, 180))}px`,
+        top: `${Math.round(clamp(height.value * topRatio, 110, 360))}px`,
+        width: `${Math.round(BASE_RADIO_WIDTH * radioScale.value)}px`,
+        height: `${Math.round(BASE_RADIO_HEIGHT * radioScale.value)}px`
+    };
+});
 
 let frequenzRule = (value: string) => {
     if ((values.frequencyRegex).test(value)) {
@@ -106,72 +142,95 @@ let frequenzRule = (value: string) => {
     }
 }
 
+let handleFrequencyInput = (event: Event) => {
+    const input = event.target as HTMLInputElement | null;
+    if (!input) return;
+
+    frequenzRule(input.value);
+}
+
+const handleOpenState = (state: boolean) => {
+    values.isRadioOpen = state;
+};
+
+const handleChannelData = (channelData: { volume: number; frequency: string }) => {
+    values.volume = Math.round(channelData.volume / (1 / values.maxVolumeSteps));
+    values.frequency = channelData.frequency;
+};
+
+const handleRadioActive = (state: boolean) => {
+    values.isRadioActive = state;
+    values.antiSpam = +new Date();
+};
+
+const handleKeyDown = (event: KeyboardEvent) => {
+    if (values.isRadioActive && event.which == 17) {
+        values.strgKeyDown = true;
+    }
+};
+
+const handleKeyUp = (event: KeyboardEvent) => {
+    if (values.isRadioActive && values.strgKeyDown && [96, 97, 98, 99, 100, 101, 102, 103, 104, 105].includes(event.which)) {
+
+        if (event.which == 96) {
+            GameService.emit("client:yaca:muteRadioChannel", values.channel);
+            return;
+        }
+
+        switch (event.which) {
+            case 97:
+                values.channel = 1;
+                break;
+            case 98:
+                values.channel = 2;
+                break;
+            case 99:
+                values.channel = 3;
+                break;
+            case 100:
+                values.channel = 4;
+                break;
+            case 101:
+                values.channel = 5;
+                break;
+            case 102:
+                values.channel = 6;
+                break;
+            case 103:
+                values.channel = 7;
+                break;
+            case 104:
+                values.channel = 8;
+                break;
+            case 105:
+                values.channel = 9;
+                break;
+        }
+
+        GameService.emit('client:yaca:changeActiveRadioChannel', values.channel);
+    }
+
+    if (event.which == 17) {
+        values.strgKeyDown = false;
+    }
+};
+
 onMounted(() => {
-    GameService.on('webview:yaca:openState', (state: boolean) => {
-        values.isRadioOpen = state;
-    });
+    GameService.on('webview:yaca:openState', handleOpenState);
+    GameService.on("webview:yaca:setChannelData", handleChannelData);
+    GameService.on("webview:yaca:setRadioActive", handleRadioActive);
 
-    GameService.on("webview:yaca:setChannelData", (channelData) => {
-        values.volume = Math.round(channelData.volume / (1 / values.maxVolumeSteps));
-        values.frequency = channelData.frequency;
-    });
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+});
 
-    GameService.on("webview:yaca:setRadioActive", (state: boolean) => {
-        values.isRadioActive = state;
-        values.antiSpam = +new Date();
-    });
+onUnmounted(() => {
+    GameService.off('webview:yaca:openState', handleOpenState);
+    GameService.off("webview:yaca:setChannelData", handleChannelData);
+    GameService.off("webview:yaca:setRadioActive", handleRadioActive);
 
-    document.addEventListener('keydown', function(event) {
-        if (values.isRadioActive && event.which == 17) {
-            values.strgKeyDown = true;
-        }
-    });
-
-    document.addEventListener('keyup', function(event) {
-        if (values.isRadioActive && values.strgKeyDown && [96, 97, 98, 99, 100, 101, 102, 103, 104, 105].includes(event.which)) {
-
-            if (event.which == 96) {
-                GameService.emit("client:yaca:muteRadioChannel", values.channel);
-                return;
-            }
-
-            switch (event.which) {
-                case 97:
-                    values.channel = 1;
-                    break;
-                case 98:
-                    values.channel = 2;
-                    break;
-                case 99:
-                    values.channel = 3;
-                    break;
-                case 100:
-                    values.channel = 4;
-                    break;
-                case 101:
-                    values.channel = 5;
-                    break;
-                case 102:
-                    values.channel = 6;
-                    break;
-                case 103:
-                    values.channel = 7;
-                    break;
-                case 104:
-                    values.channel = 8;
-                    break;
-                case 105:
-                    values.channel = 9;
-                    break;
-            }
-
-            GameService.emit('client:yaca:changeActiveRadioChannel', values.channel);
-        }
-
-        if (event.which == 17) {
-            values.strgKeyDown = false;
-        }
-    });
+    document.removeEventListener('keydown', handleKeyDown);
+    document.removeEventListener('keyup', handleKeyUp);
 });
 
 let btnExecute = (mode: string) => {
@@ -237,31 +296,22 @@ let volumeChange = (mode: string) => {
 <style>
 .radioDiv {
     position: fixed;
-    top: 5rem;
-    left: 4rem;
-    height: 100vh;
-    display: flex;
-    justify-content: start;
-    align-items: center;
+    z-index: 10;
+    pointer-events: none;
 }
 
 .content {
     position: relative;
-    left: 5rem;
-    bottom: 10rem;
+    width: 200px;
+    transform: scale(var(--radio-scale));
+    transform-origin: top left;
     filter: drop-shadow(0 16px 24px rgba(8, 5, 4, 0.6));
-}
-
-@media(min-width: 2560px) {
-    .content {
-        left: 5rem;
-        bottom: 16rem;
-    }
 }
 
 .radioShell {
     border-radius: 12px;
     filter: sepia(0.26) contrast(1.05) saturate(0.85);
+    pointer-events: none;
 }
 
 .activeRadio {
@@ -286,17 +336,6 @@ let volumeChange = (mode: string) => {
     animation: radioPulse 2.8s ease-in-out infinite;
 }
 
-@media(min-width: 2560px) {
-    .activeRadio {
-        width: 152px;
-        height: 79px;
-        left: 24px;
-        top: 253px;
-        font-size: 1rem;
-        line-height: 0.25rem;
-    }
-}
-
 .deactiveRadio {
     background:
         linear-gradient(175deg, rgba(13, 12, 9, 0.92) 0%, rgba(31, 25, 20, 0.96) 100%);
@@ -309,15 +348,6 @@ let volumeChange = (mode: string) => {
     line-height: 0;
     border: 1px solid rgba(164, 121, 72, 0.38);
     box-shadow: inset 0 0 0 1px rgba(210, 175, 127, 0.09);
-}
-
-@media(min-width: 2560px) {
-    .deactiveRadio {
-        width: 152px;
-        height: 79px;
-        left: 24px;
-        top: 253px;
-    }
 }
 
 .frequenzContent {
@@ -339,12 +369,6 @@ let volumeChange = (mode: string) => {
     font-family: 'DSEG7 Modern';
 }
 
-@media(min-width: 2560px) {
-    .inputFrequenz {
-        font-size: 1rem;
-    }
-}
-
 .inputFrequenz:focus {
     outline: none;
 }
@@ -363,15 +387,6 @@ let volumeChange = (mode: string) => {
     left: 25px;
 }
 
-@media (min-width: 2560px) {
-    .btnContent {
-        width: 130px;
-        height: 60px;
-        top: 342px;
-        left: 35px;
-    }
-}
-
 .btnOverContent {
     position: absolute;
     width: 100px;
@@ -380,20 +395,11 @@ let volumeChange = (mode: string) => {
     left: 45px;
 }
 
-
-@media (min-width: 2560px) {
-    .btnOverContent {
-        width: 132px;
-        height: 65px;
-        top: 130px;
-        left: 60px;
-    }
-}
-
 .clickCols {
     cursor: pointer;
     border-radius: 3px;
     transition: background-color 0.16s ease;
+    pointer-events: auto;
 }
 
 .clickCols:hover {
@@ -411,13 +417,6 @@ let volumeChange = (mode: string) => {
     border-radius: 1px;
 }
 
-@media (min-width: 2560px) {
-    .radioVolume {
-        width: 7px;
-        height: 7px;
-    }
-}
-
 .volumeContent {
     position: absolute;
     display: block;
@@ -427,12 +426,6 @@ let volumeChange = (mode: string) => {
     width: 9px;
     height: 60px;
     transform: rotate(180deg);
-}
-
-@media(min-width: 2560px) {
-    .volumeContent {
-        height: 80px;
-    }
 }
 
 .modeContent {

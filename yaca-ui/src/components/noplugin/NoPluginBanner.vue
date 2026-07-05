@@ -5,7 +5,7 @@
 </template>
 
 <script lang="ts" setup>
-import LocaleService from "@/services/locale-service";
+import LocaleService from "../../services/locale-service";
 </script>
 
 <style scoped>

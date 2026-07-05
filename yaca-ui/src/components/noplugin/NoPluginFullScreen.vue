@@ -1,7 +1,7 @@
 ﻿<template>
   <div class="no-plugin-screen w-100 h-100 overflow-hidden d-flex justify-center align-center">
     <div class="no-plugin-screen__plate w-100 h-100 d-flex justify-center align-center flex-column text-white">
-      <img v-if="!props.logoUrl" src="../../assets/logo.svg" alt="logo" class="mb-5 logo">
+      <img v-if="!props.logoUrl" src="../../assets/logo.optimized.svg" alt="logo" class="mb-5 logo">
       <img v-else :src="props.logoUrl" alt="logo" class="mb-5 logo">
       <h3 class="western-heading western-label">{{ LocaleService.GetLocale("no_plugin_active_header") }}</h3>
       <p class="western-subtitle">{{ LocaleService.GetLocale("no_plugin_active_body") }}</p>
@@ -10,7 +10,7 @@
 </template>
 
 <script lang="ts" setup>
-import LocaleService from "@/services/locale-service";
+import LocaleService from "../../services/locale-service";
 
 const props = defineProps({
   logoUrl: String
